@@ -16,7 +16,7 @@ object "YulString" {
                 value()
             }
 
-            case 0x93a09352 { // setValue(string memory)
+            case 0x93a09352 { // setValue(string)
                 setValue()
             }
 
@@ -40,7 +40,7 @@ object "YulString" {
                 // the encoded string is stored at keccak(0)
                 // and runs for nWords where nWords is
                 // len / 32 + 1
-                case 0x1 {
+                case 1 {
                     // Use 0x80 as the starting slot for the return string
                     let retSlot := 0x80
 
@@ -89,7 +89,7 @@ object "YulString" {
 
                 // Length is < 32, so the string is encoded in the high byte
                 // of the word.
-                case 0x0 {
+                case 0 {
                     mstore(0x00, 0x20)
                     mstore(0x20, len)
                     mstore(0x40, highBytes(head))
@@ -111,7 +111,7 @@ object "YulString" {
                     // when strlen >= 32, we store the encoded length which is
                     // length << 1 | 1
                     encodedLength := or(encodedLength, 1)
-                    sstore(0x0, encodedLength) // save encoded length
+                    sstore(0x0, encodedLength) // save encoded length     
 
                     // the string data is stored in as many slots as needed 
                     // beginning at keccak256(0)
@@ -130,7 +130,7 @@ object "YulString" {
                 default {
                     // when strlen < 32, the encoded length is stored in the low
                     // byte and the string encoding in the high byte.
-                    let v := highBytes(decodeAsUint(2))
+                    let v := decodeAsUint(2)
                     sstore(0, or(v, encodedLength))
                 }                
             }            
