@@ -25,8 +25,8 @@ object "YulString" {
             }
 
             function value() {
-                // Read the data from slot 0
-                let head := sload(0)
+                // Read the data from variable slot
+                let head := sload(variableSlot())
 
                 // The length is encoded in the low byte of the word
                 // 0             15               31
@@ -64,8 +64,8 @@ object "YulString" {
                     // b) string length
                     let returnSize := 0x40 
 
-                    // Get the slot for the first word of the string
-                    mstore(0x00, 0x00)
+                    // Get the storage slot for the first word of the string
+                    mstore(0x00, variableSlot())
                     let slot := keccak256(0x00, 0x20)
 
                     // Calculate word count for output
@@ -111,11 +111,14 @@ object "YulString" {
                     // when strlen >= 32, we store the encoded length which is
                     // length << 1 | 1
                     encodedLength := or(encodedLength, 1)
-                    sstore(0x0, encodedLength) // save encoded length     
+
+                    // save encoded length at the variable's storage slot
+                    sstore(variableSlot(), encodedLength)
 
                     // the string data is stored in as many slots as needed 
-                    // beginning at keccak256(0)
-                    let ptr := keccak256(0, 0x20)
+                    // beginning at keccak256(variableSlot())
+                    mstore(0x00, variableSlot())
+                    let ptr := keccak256(0x00, 0x20)
 
                     let offset := 2 // start of data in calldata
                     let count := slotsForLength(len)
@@ -131,9 +134,15 @@ object "YulString" {
                     // when strlen < 32, the encoded length is stored in the low
                     // byte and the string encoding in the high byte.
                     let v := decodeAsUint(2)
-                    sstore(0, or(v, encodedLength))
+                    sstore(variableSlot(), or(v, encodedLength))
                 }                
             }            
+            /* ---------- storage layout ----------- */
+            function variableSlot() -> s {
+                // declare the position of the string's variable slot,
+                // which will be zero for this exercise.
+                s := 0
+            }
 
             /* ---------- calldata decoding ----------- */
             function selector() -> s {
