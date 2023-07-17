@@ -28,19 +28,35 @@ object "YulString" {
                 // Read the data from variable slot
                 let head := sload(variableSlot())
 
-                // The length is encoded in the low byte of the word
-                // 0             15             30 |             31 |
-                // 0            0xf           0x1e |           0x1f |
-                // | ............................. | encoded length |
+                // For strings < 32 bytes the string is encoded in as many of the 
+                // the first 31 bytes that is needed, while the length is encoded
+                // in the last byte. 
+                // 0             15             30 |                 31 |
+                // 0            0xf           0x1e |               0x1f |
+                // | ............................. |<- encoded length ->|
+                //                                   last BYTE of head
 
+                // For strings >= 32 bytes, the length is encode in the low word
+                // of the variable slot, while the string is stored in as many
+                // slots as needed, starting at keccak256(variableSlot()).
+                // 0                15 |   16                32 |
+                // 0              0x0f | 0x10              0x1f |
+                // | ..................| <-- encoded length  -->|
+                //                         last 16 BYTES of head
+                // NOTE: The formula for encoding the length is:
+                // encodedLength = length * 2      if length < 32
+                //                 length * 2 + 1  otherwise
+                // This means we can inspect the last bit of the encoded length
+                // to determine if the string is < 32 bytes
+
+
+                // isOdd(head)
                 switch and(head, 0x1)
 
-                // If the length is >= 32
-                // the encoded string is stored at keccak(0)
-                // and runs for nWords where nWords is
-                // len / 32 (+1)
-                case 1 {
+                case 1 { // odd
+                    // get length from entire low bytes.
                     let len := shr(1, lowBytes(head))
+
                     // Use 0x80 as the starting slot for the return string
                     let retSlot := 0x80
 
@@ -89,7 +105,8 @@ object "YulString" {
 
                 // Length is < 32, so the string is encoded in the last byte
                 // of the word.
-                case 0 {
+                default {  // even
+                    // get length from last BYTE
                     let len := shr(1, lastByte(head))
                     mstore(0x00, 0x20)
                     mstore(0x20, len)
@@ -113,7 +130,7 @@ object "YulString" {
                 switch gt(len, 31)
                 case 1 {
                     // when strlen >= 32, we store the encoded length which is
-                    // length << 1 + 1
+                    // length * 2 + 1
                     encodedLength := add(encodedLength, 1)
 
                     // save encoded length at the variable's storage slot
